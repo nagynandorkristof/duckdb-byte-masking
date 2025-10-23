@@ -1,24 +1,13 @@
 # Build directories
-build/
-**/build/
-cmake-build-debug/
+build
+cmake-build-debug
 
-# DuckDB source (pulled during build)
-duckdb/
-
-# Extension CI tools (pulled during build)
-extension-ci-tools/
-
-# vcpkg (package manager)
-vcpkg/
-vcpkg_installed/
-
-# Temporary directories
+# Temporary directories  
 duckdb_unittest_tempdir/
 testext
 
 # IDE files
-.idea/
+.idea
 .vscode/
 *.swp
 *.swo
