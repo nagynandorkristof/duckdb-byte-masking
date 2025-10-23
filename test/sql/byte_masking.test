@@ -1,0 +1,139 @@
+# name: test/sql/byte_masking.test
+# description: test byte_masking extension
+# group: [sql]
+
+# Before we load the extension, this will fail
+statement error
+SELECT mask_bytes('field1:0-3', '\x01\x02\x03\x04'::BLOB);
+----
+Catalog Error: Scalar Function with name mask_bytes does not exist!
+
+# Load the extension
+require byte_masking
+
+# Test basic mask_bytes functionality - single field extraction (default big-endian)
+query I
+SELECT mask_bytes('field1:0-3', '\x01\x02\x03\x04'::BLOB);
+----
+{field1=16909060}
+
+# Test little-endian vs big-endian extraction
+query I
+SELECT mask_bytes('field1:0-3', '\x01\x02\x03\x04'::BLOB, 'little');
+----
+{field1=67305985}
+
+query I
+SELECT mask_bytes('field1:0-3', '\x01\x02\x03\x04'::BLOB, 'big');
+----
+{field1=16909060}
+
+# Test multiple field extraction
+query I
+SELECT mask_bytes('field1:0-1,field2:2-3', '\x01\x02\x03\x04'::BLOB);
+----
+{field1=258, field2=772}
+
+# Test single byte extraction
+query I
+SELECT mask_bytes('byte1:0-0,byte2:1-1', '\xFF\x00'::BLOB);
+----
+{byte1=255, byte2=0}
+
+# Test overlapping ranges
+query I
+SELECT mask_bytes('full:0-3,partial:1-2', '\x01\x02\x03\x04'::BLOB);
+----
+{full=16909060, partial=515}
+
+# Test empty blob
+query I
+SELECT mask_bytes('field1:0-0', ''::BLOB);
+----
+{field1=0}
+
+# Test out of bounds access (should return 0 for missing bytes)
+query I
+SELECT mask_bytes('field1:10-11', '\x01\x02'::BLOB);
+----
+{field1=0}
+
+# Test partial out of bounds (some bytes exist, some don't)
+query I
+SELECT mask_bytes('field1:1-5', '\x01\x02'::BLOB);
+----
+{field1=2}
+
+# Test whitespace handling in mask string
+query I
+SELECT mask_bytes('  field1 : 0 - 1  ,  field2:2-3  ', '\x01\x02\x03\x04'::BLOB);
+----
+{field1=258, field2=772}
+
+# Test with NULL inputs
+query I
+SELECT mask_bytes(NULL, '\x01\x02\x03\x04'::BLOB);
+----
+NULL
+
+query I
+SELECT mask_bytes('field1:0-1', NULL);
+----
+NULL
+
+# Test error cases - invalid mask format
+statement error
+SELECT mask_bytes('invalid_format', '\x01\x02'::BLOB);
+----
+Invalid mask format
+
+statement error
+SELECT mask_bytes('field1:invalid_range', '\x01\x02'::BLOB);
+----
+Invalid range format
+
+statement error
+SELECT mask_bytes('field1:5-3', '\x01\x02'::BLOB);
+----
+Invalid byte range
+
+statement error
+SELECT mask_bytes('field1:-1-1', '\x01\x02'::BLOB);
+----
+Invalid byte range
+
+# Test invalid endianness parameter
+statement error
+SELECT mask_bytes('field1:0-1', '\x01\x02'::BLOB, 'invalid');
+----
+Invalid endianness parameter
+
+# Test complex real-world scenario - parsing network packet header
+query I
+SELECT mask_bytes('version:0-0,ihl:0-0,dscp:1-1,length:2-3,id:4-5,flags:6-6,frag_offset:6-7,ttl:8-8,protocol:9-9', '\x45\x00\x00\x3c\x1c\x46\x40\x00\x40\x06\x00\x00\xac\x10\x00\x01'::BLOB);
+----
+{version=69, ihl=69, dscp=0, length=60, id=7238, flags=64, frag_offset=16384, ttl=64, protocol=6}
+
+# Test maximum 8 bytes extraction (BIGINT limit)
+query I
+SELECT mask_bytes('max_field:0-7', '\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A'::BLOB);
+----
+{max_field=72623859790382856}
+
+# Test beyond 8 bytes (should only take first 8)
+query I
+SELECT mask_bytes('over_limit:0-9', '\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A'::BLOB);
+----
+{over_limit=72623859790382856}
+
+# Test endianness with multi-byte values
+query II
+SELECT mask_bytes('little:0-1', '\x01\x02'::BLOB, 'little') as little, mask_bytes('big:0-1', '\x01\x02'::BLOB, 'big') as big;
+----
+{little=513}	{big=258}
+
+# Test with binary data containing null bytes
+query I
+SELECT mask_bytes('field1:0-3', '\x00\x01\x00\x02'::BLOB);
+----
+{field1=65538}

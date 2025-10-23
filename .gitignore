@@ -1,0 +1,67 @@
+# Build directories
+build/
+**/build/
+cmake-build-debug/
+
+# DuckDB source (pulled during build)
+duckdb/
+
+# Extension CI tools (pulled during build)
+extension-ci-tools/
+
+# vcpkg (package manager)
+vcpkg/
+vcpkg_installed/
+
+# Temporary directories
+duckdb_unittest_tempdir/
+testext
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python cache
+test/python/__pycache__/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# R files
+.Rhistory
+
+# Compiled files
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.a
+*.lib
+*.exe
+*.out
+*.app
+
+# Extension build artifacts
+*.duckdb_extension
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
